@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
+
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torchvision
 import torch.nn.functional as F
+import torchvision
 import torchvision.transforms as T
-import matplotlib.pyplot as plt
 from PIL import Image
 from torch.autograd import Variable
 
@@ -71,6 +72,7 @@ def predict(image_path, net, topk=2, device='cuda:0'):
     logits = net.forward(inputs)
     ps = F.softmax(logits, dim=1)
     topk = ps.cpu().topk(topk)
+    torch.cuda.empty_cache()
 
     return (e.data.numpy().squeeze().tolist() for e in topk)
 
@@ -151,6 +153,9 @@ def test(net, data_loader, cost_function, device='cuda:0'):
             _, predicted = outputs.max(1)
             cumulative_accuracy += predicted.eq(targets).sum().item()
 
+            # Free cuda memory
+            torch.cuda.empty_cache()
+
     return cumulative_loss/samples, cumulative_accuracy/samples*100
 
 
@@ -186,6 +191,9 @@ def train(net,data_loader, optimizer, cost_function, device='cuda:0'):
         cumulative_loss += loss.item()
         _, predicted = outputs.max(1)
         cumulative_accuracy += predicted.eq(targets).sum().item()
+
+        # Free cuda memory
+        torch.cuda.empty_cache()
 
     return cumulative_loss/samples, cumulative_accuracy/samples*100
 
@@ -278,5 +286,5 @@ def main(batch_size=128,
 
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='alexnet',
-     img_root='data/ProfilePhotos', num_classes=4, epochs=3)
+     img_root='data/ProfilePhotos', num_classes=4, epochs=3, batch_size=64)
 
