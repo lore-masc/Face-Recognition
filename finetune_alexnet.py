@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,6 +12,7 @@ from PIL import Image
 from torch.autograd import Variable
 
 IMAGE_SIZE = 228
+WEIGHTS_PATH = "model/weights"
 
 
 '''
@@ -85,8 +87,7 @@ Input arguments
 
 
 def initialize_alexnet(num_classes):
-    # load the pre-trained Alexnet
-    alexnet = torchvision.models.alexnet(pretrained=True)
+    alexnet = torchvision.models.alexnet()
 
     # get the number of neurons in the penultimate layer
     in_features = alexnet.classifier[6].in_features
@@ -94,6 +95,12 @@ def initialize_alexnet(num_classes):
     # re-initalize the output layer
     alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
                                             out_features=num_classes)
+
+    if Path(WEIGHTS_PATH).exists():
+        alexnet.load_state_dict(torch.load(WEIGHTS_PATH))
+    else:
+        # load the pre-trained Alexnet
+        alexnet = torchvision.models.alexnet(pretrained=True)
 
     return alexnet
 
@@ -219,65 +226,74 @@ def main(batch_size=128,
          epochs=50, 
          num_classes=10,
          plot_name='alexnet_sgd',
-         img_root=None):
+         img_root=None,
+         save=True,
+         perform_training=True):
     train_loader, test_loader = get_data(batch_size=batch_size,
                                          img_root=img_root)
+
     net = initialize_alexnet(num_classes=num_classes).to(device)
 
-    optimizer = get_optimizer(net, learning_rate, weight_decay, momentum)
+    if perform_training:
+        optimizer = get_optimizer(net, learning_rate, weight_decay, momentum)
 
-    cost_function = get_cost_function()
+        cost_function = get_cost_function()
 
-    train_loss_curve = []
-    train_accuracy_curve = []
-    test_loss_curve = []
-    test_accuracy_curve = []
+        train_loss_curve = []
+        train_accuracy_curve = []
+        test_loss_curve = []
+        test_accuracy_curve = []
 
-    print('Before training:')
-    train_loss, train_accuracy = test(net, train_loader, cost_function)
-    test_loss, test_accuracy = test(net, test_loader, cost_function)
-
-    print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
-    print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
-    print('-----------------------------------------------------')
-
-    for e in range(epochs):
-        train_loss, train_accuracy = train(net, train_loader, optimizer, cost_function)
+        print('Before training:')
+        train_loss, train_accuracy = test(net, train_loader, cost_function)
         test_loss, test_accuracy = test(net, test_loader, cost_function)
-        print('Epoch: {:d}'.format(e+1))
+
         print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
         print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
         print('-----------------------------------------------------')
 
-        train_loss_curve.append(train_loss)
-        train_accuracy_curve.append(train_accuracy)
-        test_loss_curve.append(test_loss)
-        test_accuracy_curve.append(test_accuracy)
+        for e in range(epochs):
+            train_loss, train_accuracy = train(net, train_loader, optimizer, cost_function)
+            test_loss, test_accuracy = test(net, test_loader, cost_function)
+            print('Epoch: {:d}'.format(e+1))
+            print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
+            print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
+            print('-----------------------------------------------------')
 
-        # Add values to plots
-        plt.clf()
-        fig, axs = plt.subplots(1, 2)
-        axs[0].set_title('Loss curves')
-        axs[0].set_xlabel('epoch')
-        axs[0].set_ylabel('loss')
-        axs[0].plot(train_loss_curve, label='Train')
-        axs[0].plot(test_loss_curve, label='Test')
+            train_loss_curve.append(train_loss)
+            train_accuracy_curve.append(train_accuracy)
+            test_loss_curve.append(test_loss)
+            test_accuracy_curve.append(test_accuracy)
 
-        axs[1].set_title('Accuracy curves')
-        axs[1].set_xlabel('epoch')
-        axs[1].set_ylabel('accuracy')
-        axs[1].plot(train_accuracy_curve, label='Train')
-        axs[1].plot(test_accuracy_curve, label='Test')
-        plt.legend()
-        plt.savefig("curve_" + plot_name + ".pdf")
+            # Add values to plots
+            plt.clf()
+            fig, axs = plt.subplots(1, 2)
+            axs[0].set_title('Loss curves')
+            axs[0].set_xlabel('epoch')
+            axs[0].set_ylabel('loss')
+            axs[0].plot(train_loss_curve, label='Train')
+            axs[0].plot(test_loss_curve, label='Test')
 
-    print('After training:')
-    train_loss, train_accuracy = test(net, train_loader, cost_function)
-    test_loss, test_accuracy = test(net, test_loader, cost_function)
+            axs[1].set_title('Accuracy curves')
+            axs[1].set_xlabel('epoch')
+            axs[1].set_ylabel('accuracy')
+            axs[1].plot(train_accuracy_curve, label='Train')
+            axs[1].plot(test_accuracy_curve, label='Test')
+            plt.legend()
+            plt.savefig("curve_" + plot_name + ".pdf")
 
-    print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
-    print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
-    print('-----------------------------------------------------')
+        print('After training:')
+        train_loss, train_accuracy = test(net, train_loader, cost_function)
+        test_loss, test_accuracy = test(net, test_loader, cost_function)
+
+        print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
+        print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
+        print('-----------------------------------------------------')
+
+        # saving model
+        if save:
+            print("Saving weights")
+            torch.save(net.state_dict(), WEIGHTS_PATH)
 
     probs, classes = predict('data/InputRec/image.png', topk=2, net=net)
     print(probs)
@@ -286,5 +302,5 @@ def main(batch_size=128,
 
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='alexnet',
-     img_root='data/ProfilePhotos', num_classes=4, epochs=3, batch_size=64)
+     img_root='data/ProfilePhotos', num_classes=4, epochs=3, batch_size=64, perform_training=False, save=True)
 
