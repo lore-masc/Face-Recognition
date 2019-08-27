@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,6 +14,12 @@ from torch.autograd import Variable
 
 IMAGE_SIZE = 228
 WEIGHTS_PATH = "model/weights"
+
+
+def get_classes(dir):
+    classes = [d for d in os.listdir(dir) if os.path.isdir(os.path.join(dir, d))]
+    classes.sort()
+    return classes
 
 
 '''
@@ -87,21 +94,22 @@ Input arguments
 
 
 def initialize_alexnet(num_classes):
-    alexnet = torchvision.models.alexnet()
-
-    # get the number of neurons in the penultimate layer
-    in_features = alexnet.classifier[6].in_features
-
-    # re-initalize the output layer
-    alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
-                                            out_features=num_classes)
-
     if Path(WEIGHTS_PATH).exists():
+        alexnet = torchvision.models.alexnet()
+        # get the number of neurons in the penultimate layer
+        in_features = alexnet.classifier[6].in_features
+        # re-initalize the output layer
+        alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
+                                                out_features=num_classes)
         alexnet.load_state_dict(torch.load(WEIGHTS_PATH))
     else:
         # load the pre-trained Alexnet
         alexnet = torchvision.models.alexnet(pretrained=True)
-
+        # get the number of neurons in the penultimate layer
+        in_features = alexnet.classifier[6].in_features
+        # re-initalize the output layer
+        alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
+                                                out_features=num_classes)
     return alexnet
 
 
@@ -297,7 +305,7 @@ def main(batch_size=128,
 
     probs, classes = predict('data/InputRec/image.png', topk=2, net=net)
     print(probs)
-    print(classes)
+    print([get_classes(img_root)[c] for c in classes])
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
