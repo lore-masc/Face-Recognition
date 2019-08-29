@@ -4,7 +4,7 @@ from PIL import Image
 
 face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_alt2.xml')
 cap = cv2.VideoCapture(0)
-i = 29
+i = 500
 while(True):
     # Capture frame-by-frame
     ret, frame = cap.read()
@@ -17,12 +17,13 @@ while(True):
         roi_gray = gray[y:y+h, x:x+w]
         roi_color = frame[y:y + h, x:x + w]
 
-        if w == 152:
+        if w == 228:
             i += 1
+            print("Salvato" + str(i))
             roi_color = cv2.resize(roi_color, dsize=(228, 228), interpolation=cv2.INTER_CUBIC)
             img_item = str(i) + "my-image.png"
-            cv2.imwrite("data\InputRec/" + img_item, roi_color)
-            #cv2.rectangle(frame, (x, y), (end_cord_x, end_cord_y), color, stroke)
+            cv2.imwrite("data\separatePhotos\Donato2/" + img_item, roi_color)
+            # cv2.rectangle(frame, (x, y), (end_cord_x, end_cord_y), color, stroke)
 
         color = (255, 100, 50)
         stroke = 2
