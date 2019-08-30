@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+8#!/usr/bin/env python
 # coding: utf-8
 import os
 from pathlib import Path
@@ -73,7 +73,9 @@ def predict(image_path, net, topk=2, device='cuda:0'):
         T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     ])
+
     img = Image.open(image_path)
+    print(image_path)
     img = preprocess(img)
     img = np.expand_dims(img, 0)
     img = torch.from_numpy(img)
@@ -84,6 +86,7 @@ def predict(image_path, net, topk=2, device='cuda:0'):
     torch.cuda.empty_cache()
 
     return (e.data.numpy().squeeze().tolist() for e in topk)
+
 
 
 '''
@@ -174,7 +177,7 @@ def test(net, data_loader, cost_function, device='cuda:0'):
     return cumulative_loss/samples, cumulative_accuracy/samples*100
 
 
-def train(net,data_loader, optimizer, cost_function, device='cuda:0'):
+def train(net, data_loader, optimizer, cost_function, device='cuda:0'):
     samples = 0.
     cumulative_loss = 0.
     cumulative_accuracy = 0.
@@ -302,13 +305,15 @@ def main(batch_size=128,
         if save:
             print("Saving weights")
             torch.save(net.state_dict(), WEIGHTS_PATH)
-
-    probs, classes = predict('data/InputRec/image.png', topk=2, net=net)
-    print(probs)
-    print([get_classes(img_root)[c] for c in classes])
+# multi prediction
+    os.chdir('data/InputRec')
+    for filename in os.listdir():
+        probs, classes = predict(filename, topk=2, net=net)
+        print(probs)
+        print([get_classes('../ProfilePhotos')[c] for c in classes])
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='alexnet',
-     img_root='data/ProfilePhotos', num_classes=4, epochs=3, batch_size=64, perform_training=False, save=True)
+     img_root='data/ProfilePhotos', num_classes=7, epochs=3, batch_size=100, perform_training=False, save=False)
 
