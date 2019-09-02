@@ -1,6 +1,6 @@
-8#!/usr/bin/env python
 # coding: utf-8
 import os
+from collections import OrderedDict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,7 +13,7 @@ from PIL import Image
 from torch.autograd import Variable
 
 IMAGE_SIZE = 228
-WEIGHTS_PATH = "model/weights"
+MODEL_PATH = "model/weights"
 
 
 def get_classes(dir):
@@ -88,7 +88,6 @@ def predict(image_path, net, topk=2, device='cuda:0'):
     return (e.data.numpy().squeeze().tolist() for e in topk)
 
 
-
 '''
 Input arguments
   num_classes: number of classes in the dataset.
@@ -96,24 +95,17 @@ Input arguments
 '''
 
 
-def initialize_alexnet(num_classes):
-    if Path(WEIGHTS_PATH).exists():
-        alexnet = torchvision.models.alexnet()
-        # get the number of neurons in the penultimate layer
-        in_features = alexnet.classifier[6].in_features
-        # re-initalize the output layer
-        alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
-                                                out_features=num_classes)
-        alexnet.load_state_dict(torch.load(WEIGHTS_PATH))
+def initialize_net(num_classes):
+    if Path(MODEL_PATH).exists():
+        net = torch.load(MODEL_PATH)
     else:
-        # load the pre-trained Alexnet
-        alexnet = torchvision.models.alexnet(pretrained=True)
+        # load the pre-trained selected net
+        net = torchvision.models.googlenet(pretrained=True)
         # get the number of neurons in the penultimate layer
-        in_features = alexnet.classifier[6].in_features
+        in_features = net.fc.in_features
         # re-initalize the output layer
-        alexnet.classifier[6] = torch.nn.Linear(in_features=in_features,
-                                                out_features=num_classes)
-    return alexnet
+        net.fc = torch.nn.Linear(in_features=in_features, out_features=num_classes)
+    return net
 
 
 def get_cost_function():
@@ -192,7 +184,7 @@ def train(net, data_loader, optimizer, cost_function, device='cuda:0'):
         outputs = net(inputs)
 
         # Apply the loss
-        loss = cost_function(outputs,targets)
+        loss = cost_function(outputs, targets)
 
         # Reset the optimizer
 
@@ -205,7 +197,7 @@ def train(net, data_loader, optimizer, cost_function, device='cuda:0'):
         optimizer.zero_grad()
 
         # Better print something, no?
-        samples+=inputs.shape[0]
+        samples += inputs.shape[0]
         cumulative_loss += loss.item()
         _, predicted = outputs.max(1)
         cumulative_accuracy += predicted.eq(targets).sum().item()
@@ -236,14 +228,14 @@ def main(batch_size=128,
          momentum=0.9, 
          epochs=50, 
          num_classes=10,
-         plot_name='alexnet_sgd',
+         plot_name='net_sgd',
          img_root=None,
          save=True,
          perform_training=True):
     train_loader, test_loader = get_data(batch_size=batch_size,
                                          img_root=img_root)
 
-    net = initialize_alexnet(num_classes=num_classes).to(device)
+    net = initialize_net(num_classes=num_classes).to(device)
 
     if perform_training:
         optimizer = get_optimizer(net, learning_rate, weight_decay, momentum)
@@ -304,8 +296,9 @@ def main(batch_size=128,
         # saving model
         if save:
             print("Saving weights")
-            torch.save(net.state_dict(), WEIGHTS_PATH)
-# multi prediction
+            torch.save(net, MODEL_PATH)
+
+    # multi prediction
     os.chdir('data/InputRec')
     for filename in os.listdir():
         probs, classes = predict(filename, topk=2, net=net)
@@ -314,6 +307,6 @@ def main(batch_size=128,
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
-main(plot_name='alexnet',
-     img_root='data/ProfilePhotos', num_classes=7, epochs=3, batch_size=100, perform_training=False, save=False)
-
+main(plot_name='googlenet', img_root='data/ProfilePhotos',
+     num_classes=5, epochs=3, batch_size=32,
+     perform_training=True, save=True)
