@@ -1,6 +1,5 @@
 # coding: utf-8
 import os
-from collections import OrderedDict
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -14,6 +13,8 @@ from torch.autograd import Variable
 
 IMAGE_SIZE = 228
 MODEL_PATH = "model/weights"
+DATASET_PATH = "data/ProfilePhotos/"
+INPUTS_PATH = "data/InputRec/"
 
 
 def get_classes(dir):
@@ -299,42 +300,25 @@ def main(batch_size=128,
             torch.save(net, MODEL_PATH)
 
     # multi prediction
-    os.chdir('data/InputRec')
-    i = 0
-    sum_prob = 0
-    # sum_don = 0
-    # sum_ang = 0
-    # sum_dani = 0
-    # sum_giulia = 0
-    # sum_dam = 0
-    # sum_oth = 0
-    dict= {
-        0: 0,  # Ang
-        1: 0,  # Dam
-        2: 0,  # Dan
-        3: 0,  # Don
-        4: 0,  # Giu
-        5: 0  # Oth
-    }
-    for filename in os.listdir():
-        probs, classes = predict(filename, topk=6, net=net)
-        # classes = np.c_[classes]
+    dict = {}
+    for k in get_classes(img_root):
+        dict.update({k: 0})
+
+    for filename in os.listdir(INPUTS_PATH):
+        probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net)
         matrix = np.c_[classes, probs]
-        matrix1 = matrix[np.argsort(matrix[:, 0])]
-        for c in matrix1[:,0]:
-            dict[int(c)] += matrix1[int(c),1]
-        print([get_classes('../ProfilePhotos')[int(c)] for c in classes])
-        # classes = classes[np.argsort(classes[:, 0])]
-        # print([get_classes('../ProfilePhotos')[c] for c in classes[:,0]])
+        matrix = matrix[np.argsort(matrix[:, 0])]
+        for c in matrix[:, 0]:
+            dict[get_classes(img_root)[int(c)]] += matrix[int(c), 1]
+        print(["{0:0.3f}".format(i) for i in probs])
+        print([get_classes(img_root)[int(c)] for c in classes])
         print()
-        i += 1
-    new_dict = {k: v / i for k, v in dict.items()}
-    print("average probability:\n", new_dict)  # bisogna ampliare considerando la media per ogni classe
 
-
+    new_dict = {k: v / len(os.listdir(INPUTS_PATH)) for k, v in dict.items()}
+    print("average probability:\n", new_dict)
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
-main(plot_name='googlenet', img_root='data/ProfilePhotos',
-     num_classes=6, epochs=3, batch_size=16,
+main(plot_name='googlenet', img_root=DATASET_PATH,
+     num_classes=5, epochs=3, batch_size=16,
      perform_training=False, save=False)
