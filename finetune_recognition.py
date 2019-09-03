@@ -300,13 +300,41 @@ def main(batch_size=128,
 
     # multi prediction
     os.chdir('data/InputRec')
+    i = 0
+    sum_prob = 0
+    # sum_don = 0
+    # sum_ang = 0
+    # sum_dani = 0
+    # sum_giulia = 0
+    # sum_dam = 0
+    # sum_oth = 0
+    dict= {
+        0: 0,  # Ang
+        1: 0,  # Dam
+        2: 0,  # Dan
+        3: 0,  # Don
+        4: 0,  # Giu
+        5: 0  # Oth
+    }
     for filename in os.listdir():
-        probs, classes = predict(filename, topk=2, net=net)
-        print(probs)
-        print([get_classes('../ProfilePhotos')[c] for c in classes])
+        probs, classes = predict(filename, topk=6, net=net)
+        # classes = np.c_[classes]
+        matrix = np.c_[classes, probs]
+        matrix1 = matrix[np.argsort(matrix[:, 0])]
+        for c in matrix1[:,0]:
+            dict[int(c)] += matrix1[int(c),1]
+        print([get_classes('../ProfilePhotos')[int(c)] for c in classes])
+        # classes = classes[np.argsort(classes[:, 0])]
+        # print([get_classes('../ProfilePhotos')[c] for c in classes[:,0]])
+        print()
+        i += 1
+    new_dict = {k: v / i for k, v in dict.items()}
+    print("average probability:\n", new_dict)  # bisogna ampliare considerando la media per ogni classe
+
+
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='googlenet', img_root='data/ProfilePhotos',
-     num_classes=5, epochs=3, batch_size=32,
-     perform_training=True, save=True)
+     num_classes=6, epochs=3, batch_size=16,
+     perform_training=False, save=False)
