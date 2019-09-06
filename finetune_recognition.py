@@ -1,4 +1,5 @@
 # coding: utf-8
+import operator
 import os
 from pathlib import Path
 
@@ -304,21 +305,38 @@ def main(batch_size=128,
     for k in get_classes(img_root):
         dict.update({k: 0})
 
-    for filename in os.listdir(INPUTS_PATH):
-        probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net)
-        matrix = np.c_[classes, probs]
-        matrix = matrix[np.argsort(matrix[:, 0])]
-        for c in matrix[:, 0]:
-            dict[get_classes(img_root)[int(c)]] += matrix[int(c), 1]
-        print(["{0:0.3f}".format(i) for i in probs])
-        print([get_classes(img_root)[int(c)] for c in classes])
-        print()
+    if len(os.listdir(INPUTS_PATH)) > 0:
+        for filename in os.listdir(INPUTS_PATH):
+            probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net)
+            matrix = np.c_[classes, probs]
+            matrix = matrix[np.argsort(matrix[:, 0])]
+            for c in matrix[:, 0]:
+                dict[get_classes(img_root)[int(c)]] += matrix[int(c), 1]
+            print(["{0:0.3f}".format(i) for i in probs])
+            print([get_classes(img_root)[int(c)] for c in classes])
+            print()
 
-    new_dict = {k: v / len(os.listdir(INPUTS_PATH)) for k, v in dict.items()}
-    print("average probability:\n", new_dict)
+        new_dict = {k: v / len(os.listdir(INPUTS_PATH)) for k, v in dict.items()}
+        print("average probability:\n", new_dict)
+
+        if gini(new_dict.values()) < 0.5:
+            print("Other!")
+        else:
+            most_prob = max(new_dict.items(), key=operator.itemgetter(1))
+            print(most_prob[0])
+
+
+def gini(list_of_values):
+    sorted_list = sorted(list_of_values)
+    height, area = 0, 0
+    for value in sorted_list:
+        height += value
+        area += height - value / 2.
+    fair_area = height * len(list_of_values) / 2.
+    return (fair_area - area) / fair_area
 
 
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='googlenet', img_root=DATASET_PATH,
-     num_classes=5, epochs=3, batch_size=16,
+     num_classes=len(os.listdir(DATASET_PATH)), epochs=3, batch_size=16,
      perform_training=False, save=False)
