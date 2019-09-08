@@ -122,10 +122,10 @@ def get_optimizer(model, lr, wd, momentum):
 
     # we will iterate through the layers of the network
     for name, param in model.named_parameters():
-      if name.startswith('classifier.6'):
-        final_layer_weights.append(param)
-      else:
-        rest_of_the_net_weights.append(param)
+        if name.startswith('classifier.6'):
+            final_layer_weights.append(param)
+        else:
+            rest_of_the_net_weights.append(param)
 
     # so now we have divided the network weights into two groups.
     # We will train the final_layer_weights with learning_rate = lr
@@ -248,16 +248,16 @@ def main(batch_size=128,
         test_accuracy_curve = []
 
         print('Before training:')
-        train_loss, train_accuracy = test(net, train_loader, cost_function)
-        test_loss, test_accuracy = test(net, test_loader, cost_function)
+        train_loss, train_accuracy = test(net, train_loader, cost_function, device)
+        test_loss, test_accuracy = test(net, test_loader, cost_function, device)
 
         print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
         print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
         print('-----------------------------------------------------')
 
         for e in range(epochs):
-            train_loss, train_accuracy = train(net, train_loader, optimizer, cost_function)
-            test_loss, test_accuracy = test(net, test_loader, cost_function)
+            train_loss, train_accuracy = train(net, train_loader, optimizer, cost_function, device)
+            test_loss, test_accuracy = test(net, test_loader, cost_function, device)
             print('Epoch: {:d}'.format(e+1))
             print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
             print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
@@ -286,8 +286,8 @@ def main(batch_size=128,
             plt.savefig("curve_" + plot_name + ".pdf")
 
         print('After training:')
-        train_loss, train_accuracy = test(net, train_loader, cost_function)
-        test_loss, test_accuracy = test(net, test_loader, cost_function)
+        train_loss, train_accuracy = test(net, train_loader, cost_function, device)
+        test_loss, test_accuracy = test(net, test_loader, cost_function, device)
 
         print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
         print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
@@ -305,7 +305,7 @@ def main(batch_size=128,
 
     if len(os.listdir(INPUTS_PATH)) > 0:
         for filename in os.listdir(INPUTS_PATH):
-            probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net)
+            probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net, device=device)
             matrix = np.c_[classes, probs]
             matrix = matrix[np.argsort(matrix[:, 0])]
             for c in matrix[:, 0]:
@@ -342,7 +342,7 @@ parser.add_argument('-e', '--epochs', action='store', dest='epochs', help='write
 parser.add_argument('-b', '--batch', action='store', dest='batch_size', help='write the batch dimension', default=16)
 parser.add_argument('-t', '--training', action='store_true', dest='training', help='set option in order to perform training before predictions')
 parser.add_argument('-s', '--save', action='store_true', dest='save', help='set option in order to save new weights')
-# parser.add_argument('-g', '--device', action='store', dest='device', help='set device processor name (cpu or cuda:0)', default='cpu')
+parser.add_argument('-g', '--device', action='store', dest='device', help='set device processor name (cpu or cuda:0)', default='cpu')
 
 args = parser.parse_args()
 
@@ -353,4 +353,4 @@ INPUTS_PATH = args.inputs     # "data/InputRec/"
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='googlenet', img_root=DATASET_PATH,
      num_classes=len(os.listdir(DATASET_PATH)), epochs=args.epochs, batch_size=args.batch_size,
-     perform_training=args.training, save=args.save)
+     perform_training=args.training, save=args.save, device=args.device)
