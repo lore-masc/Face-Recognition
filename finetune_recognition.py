@@ -1,4 +1,5 @@
 # coding: utf-8
+import argparse
 import operator
 import os
 from pathlib import Path
@@ -13,9 +14,6 @@ from PIL import Image
 from torch.autograd import Variable
 
 IMAGE_SIZE = 228
-MODEL_PATH = "model/weights"
-DATASET_PATH = "data/ProfilePhotos/"
-INPUTS_PATH = "data/InputRec/"
 
 
 def get_classes(dir):
@@ -336,7 +334,23 @@ def gini(list_of_values):
     return (fair_area - area) / fair_area
 
 
+parser = argparse.ArgumentParser(description='Process face recognition using GoogLeNet.')
+parser.add_argument('-d', '--dataset', action='store', dest='dataset', help='write the dataset relative path', required=True)
+parser.add_argument('-i', '--inputs', action='store', dest='inputs', help='write the inputs relative path', required=True)
+parser.add_argument('-w', '--weights', action='store', dest='weights', help='write the model relative path', required=True)
+parser.add_argument('-e', '--epochs', action='store', dest='epochs', help='write the number of epochs to run during the train', default=3)
+parser.add_argument('-b', '--batch', action='store', dest='batch_size', help='write the batch dimension', default=16)
+parser.add_argument('-t', '--training', action='store_true', dest='training', help='set option in order to perform training before predictions')
+parser.add_argument('-s', '--save', action='store_true', dest='save', help='set option in order to save new weights')
+# parser.add_argument('-g', '--device', action='store', dest='device', help='set device processor name (cpu or cuda:0)', default='cpu')
+
+args = parser.parse_args()
+
+MODEL_PATH = args.weights     # "model/weights"
+DATASET_PATH = args.dataset   # "data/ProfilePhotos/"
+INPUTS_PATH = args.inputs     # "data/InputRec/"
+
 # num_classes = num_faces_recognited + 1 (no rec)
 main(plot_name='googlenet', img_root=DATASET_PATH,
-     num_classes=len(os.listdir(DATASET_PATH)), epochs=3, batch_size=16,
-     perform_training=False, save=False)
+     num_classes=len(os.listdir(DATASET_PATH)), epochs=args.epochs, batch_size=args.batch_size,
+     perform_training=args.training, save=args.save)
