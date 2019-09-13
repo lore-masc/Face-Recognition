@@ -3,8 +3,6 @@ import argparse
 import operator
 import os
 from pathlib import Path
-
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -75,7 +73,6 @@ def predict(image_path, net, topk=2, device='cuda:0'):
     ])
 
     img = Image.open(image_path)
-    print(image_path)
     img = preprocess(img)
     img = np.expand_dims(img, 0)
     img = torch.from_numpy(img)
@@ -228,14 +225,16 @@ def main(batch_size=128,
          momentum=0.9, 
          epochs=50, 
          num_classes=10,
-         plot_name='net_sgd',
          img_root=None,
          save=True,
          perform_training=True):
+
     train_loader, test_loader = get_data(batch_size=batch_size,
                                          img_root=img_root)
 
     net = initialize_net(num_classes=num_classes).to(device)
+
+    print("{")
 
     if perform_training:
         optimizer = get_optimizer(net, learning_rate, weight_decay, momentum)
@@ -247,55 +246,38 @@ def main(batch_size=128,
         test_loss_curve = []
         test_accuracy_curve = []
 
-        print('Before training:')
+        print('\t"training": [')
         train_loss, train_accuracy = test(net, train_loader, cost_function, device)
         test_loss, test_accuracy = test(net, test_loader, cost_function, device)
 
-        print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
-        print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
-        print('-----------------------------------------------------')
+        print('\t\t{"Training loss": %.5f, "Training accuracy": %.2f},' % (train_loss, train_accuracy))
+        print('\t\t{"Test loss": %.5f, "Test accuracy": %.2f},' % (test_loss, test_accuracy))
+        # print('-----------------------------------------------------')
 
         for e in range(epochs):
             train_loss, train_accuracy = train(net, train_loader, optimizer, cost_function, device)
             test_loss, test_accuracy = test(net, test_loader, cost_function, device)
-            print('Epoch: {:d}'.format(e+1))
-            print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
-            print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
-            print('-----------------------------------------------------')
+            # print('Epoch: {:d}'.format(e+1))
+            print('\t\t{"Training loss": %.5f, "Training accuracy": %.2f},' % (train_loss, train_accuracy))
+            print('\t\t{"Test loss": %.5f, "Test accuracy": %.2f},' % (test_loss, test_accuracy))
+            # print('-----------------------------------------------------')
 
             train_loss_curve.append(train_loss)
             train_accuracy_curve.append(train_accuracy)
             test_loss_curve.append(test_loss)
             test_accuracy_curve.append(test_accuracy)
 
-            # Add values to plots
-            plt.clf()
-            fig, axs = plt.subplots(1, 2)
-            axs[0].set_title('Loss curves')
-            axs[0].set_xlabel('epoch')
-            axs[0].set_ylabel('loss')
-            axs[0].plot(train_loss_curve, label='Train')
-            axs[0].plot(test_loss_curve, label='Test')
-
-            axs[1].set_title('Accuracy curves')
-            axs[1].set_xlabel('epoch')
-            axs[1].set_ylabel('accuracy')
-            axs[1].plot(train_accuracy_curve, label='Train')
-            axs[1].plot(test_accuracy_curve, label='Test')
-            plt.legend()
-            plt.savefig("curve_" + plot_name + ".pdf")
-
-        print('After training:')
         train_loss, train_accuracy = test(net, train_loader, cost_function, device)
         test_loss, test_accuracy = test(net, test_loader, cost_function, device)
 
-        print('\t Training loss {:.5f}, Training accuracy {:.2f}'.format(train_loss, train_accuracy))
-        print('\t Test loss {:.5f}, Test accuracy {:.2f}'.format(test_loss, test_accuracy))
-        print('-----------------------------------------------------')
+        print('\t\t{"Training loss": %.5f, "Training accuracy": %.2f},' % (train_loss, train_accuracy))
+        print('\t\t{"Test loss": %.5f, "Test accuracy": %.2f}' % (test_loss, test_accuracy))
+        # print('-----------------------------------------------------')
 
+        print('\t],')
         # saving model
         if save:
-            print("Saving weights")
+            # print("Saving weights")
             torch.save(net, MODEL_PATH)
 
     # multi prediction
@@ -303,25 +285,35 @@ def main(batch_size=128,
     for k in get_classes(img_root):
         dict.update({k: 0})
 
+    print('\t"prediction": {')
+    print('\t\t"files": [')
     if len(os.listdir(INPUTS_PATH)) > 0:
         for filename in os.listdir(INPUTS_PATH):
+            if filename != os.listdir(INPUTS_PATH)[0]:
+                print(',')
+            print('\t\t\t{')
+            print('\t\t\t\t"name": "' + filename + '",')
             probs, classes = predict(INPUTS_PATH + filename, topk=num_classes, net=net, device=device)
             matrix = np.c_[classes, probs]
             matrix = matrix[np.argsort(matrix[:, 0])]
             for c in matrix[:, 0]:
                 dict[get_classes(img_root)[int(c)]] += matrix[int(c), 1]
-            print(["{0:0.3f}".format(i) for i in probs])
-            print([get_classes(img_root)[int(c)] for c in classes])
-            print()
+            print('\t\t\t\t"probs": ' + str(["{0:0.3f}".format(i) for i in probs]) + ',')
+            print('\t\t\t\t"classes": ' + str([get_classes(img_root)[int(c)] for c in classes]))
+            print('\t\t\t}', end='')
+        print()
+        print('\t\t],')
 
         new_dict = {k: v / len(os.listdir(INPUTS_PATH)) for k, v in dict.items()}
-        print("average probability:\n", new_dict)
-
+        print('\t\t"average": ' + str(new_dict) + ',')
+        print('\t\t"result": ', end='')
         if gini(new_dict.values()) < 0.5:
-            print("Other!")
+            print('other')
         else:
             most_prob = max(new_dict.items(), key=operator.itemgetter(1))
-            print(most_prob[0])
+            print('"' + str(most_prob[0]) + '"')
+    print('\t}')
+    print('}')
 
 
 def gini(list_of_values):
@@ -338,8 +330,8 @@ parser = argparse.ArgumentParser(description='Process face recognition using Goo
 parser.add_argument('-d', '--dataset', action='store', dest='dataset', help='write the dataset relative path', required=True)
 parser.add_argument('-i', '--inputs', action='store', dest='inputs', help='write the inputs relative path', required=True)
 parser.add_argument('-w', '--weights', action='store', dest='weights', help='write the model relative path', required=True)
-parser.add_argument('-e', '--epochs', action='store', dest='epochs', help='write the number of epochs to run during the train', default=3)
-parser.add_argument('-b', '--batch', action='store', dest='batch_size', help='write the batch dimension', default=16)
+parser.add_argument('-e', '--epochs', action='store', dest='epochs', type=int, help='write the number of epochs to run during the train', default=3)
+parser.add_argument('-b', '--batch', action='store', dest='batch_size', type=int, help='write the batch dimension', default=16)
 parser.add_argument('-t', '--training', action='store_true', dest='training', help='set option in order to perform training before predictions')
 parser.add_argument('-s', '--save', action='store_true', dest='save', help='set option in order to save new weights')
 parser.add_argument('-g', '--device', action='store', dest='device', help='set device processor name (cpu or cuda:0)', default='cpu')
@@ -350,7 +342,6 @@ MODEL_PATH = args.weights     # "model/weights"
 DATASET_PATH = args.dataset   # "data/ProfilePhotos/"
 INPUTS_PATH = args.inputs     # "data/InputRec/"
 
-# num_classes = num_faces_recognited + 1 (no rec)
-main(plot_name='googlenet', img_root=DATASET_PATH,
+main(img_root=DATASET_PATH,
      num_classes=len(os.listdir(DATASET_PATH)), epochs=args.epochs, batch_size=args.batch_size,
      perform_training=args.training, save=args.save, device=args.device)
