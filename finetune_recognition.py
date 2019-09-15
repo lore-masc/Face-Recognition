@@ -78,6 +78,7 @@ def predict(image_path, net, topk=2, device='cuda:0'):
     img = torch.from_numpy(img)
     inputs = Variable(img).to(device)
     logits = net.forward(inputs)
+    print('\t\t\t\t"finger": ' + str(logits.T.tolist()) + ',')
     ps = F.softmax(logits, dim=1)
     topk = ps.cpu().topk(topk)
     torch.cuda.empty_cache()
