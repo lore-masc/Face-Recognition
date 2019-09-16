@@ -69,7 +69,7 @@ def predict(image_path, net, topk=2, device='cuda:0'):
         T.transforms.Resize(IMAGE_SIZE, IMAGE_SIZE),
         T.transforms.ToTensor(),
         T.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
+                               std=[0.229, 0.224, 0.225])
     ])
 
     img = Image.open(image_path)
